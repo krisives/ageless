@@ -71,7 +71,7 @@ public class GameUI {
 
 	private Stroke stroke = new BasicStroke(1.0f);
 
-	public void draw(Graphics2D g) {
+	public void draw(Graphics2D g, Game game) {
 		g.setStroke(stroke);
 		cursor.draw(g);
 

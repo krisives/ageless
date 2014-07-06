@@ -123,6 +123,28 @@ public class GameWorld {
 	public GameThing getThing(int thingID) {
 		return state.getThing(thingID);
 	}
+	
+	public GamePlayer getPlayer(int id) {
+		return players.get(id);
+	}
+	
+	public GamePlayer getPlayer(GameThing thing) {
+		if (thing == null) {
+			return getPlayer(0);
+		}
+		
+		return getPlayer(thing.getPlayerID());
+	}
+	
+	public <T extends GameThing> T findThing(GamePlayer player, Class<? extends T> c) {
+		for (GameThing thing : getState().getThings()) {
+			if (c.isInstance(thing)) {
+				return (T)thing;
+			}
+		}
+		
+		return null;
+	}
 
 	private void seed(int salt) {
 		int seed;

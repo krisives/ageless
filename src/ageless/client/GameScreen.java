@@ -2,13 +2,11 @@ package ageless.client;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.Shape;
 import java.awt.Stroke;
 import java.awt.Toolkit;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferStrategy;
 
 import javax.swing.JComponent;
@@ -33,7 +31,7 @@ public class GameScreen extends JComponent {
 	private Game game;
 	private Stroke selectionStroke;
 	private Stroke solidStroke;
-	
+
 	public GameScreen(GameWindow window) {
 		this.window = window;
 		this.client = window.getClient();
@@ -41,10 +39,7 @@ public class GameScreen extends JComponent {
 		this.startTime = System.currentTimeMillis();
 
 		setSize(640, 480);
-
 	}
-
-	
 
 	public void init() {
 		this.bufferStrategy = window.getBufferStrategy();
@@ -55,6 +50,10 @@ public class GameScreen extends JComponent {
 
 		selectionStroke = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 0, new float[] { 3 }, 0);
 		solidStroke = new BasicStroke(1.0f);
+
+		Font font = new Font("Courier", Font.PLAIN, 12);
+
+		g.setFont(font);
 	}
 
 	public void render(Game game) {
@@ -68,7 +67,7 @@ public class GameScreen extends JComponent {
 
 		this.game = game;
 		draw();
-		ui.draw(g);
+		ui.draw(g, game);
 
 		bufferStrategy.show();
 		Toolkit.getDefaultToolkit().sync();
@@ -89,16 +88,16 @@ public class GameScreen extends JComponent {
 
 		frame++;
 	}
-	
-	//Area selectArea = new Area();
+
+	// Area selectArea = new Area();
 
 	protected void drawState(GameState state) {
 		GamePlayer me = game.getPlayer();
-		
+
 		g.setColor(Color.GREEN);
 		g.setStroke(selectionStroke);
-		
-		//selectArea.reset();
+
+		// selectArea.reset();
 
 		for (int thingID : me.getSelected()) {
 			GameThing thing = state.getThing(thingID);
@@ -106,14 +105,14 @@ public class GameScreen extends JComponent {
 			if (thing == null) {
 				continue;
 			}
-			
-			//float s = 4.0f + thing.getSize() * 2.1f;
-			//float x = thing.getX() - s * 0.5f;
-			//float y = thing.getY() - s * 0.5f;
-			
+
+			// float s = 4.0f + thing.getSize() * 2.1f;
+			// float x = thing.getX() - s * 0.5f;
+			// float y = thing.getY() - s * 0.5f;
+
 			drawCircle(thing.getX(), thing.getY(), (float) Math.round(6 + thing.getSize() * 2.1f));
 		}
-		
+
 		g.setStroke(solidStroke);
 
 		for (GameThing thing : state.getThings()) {
@@ -160,15 +159,17 @@ public class GameScreen extends JComponent {
 	}
 
 	protected void drawColony(Colony colony) {
-
-		g.setColor(Color.WHITE);
-		drawCircle(colony.getX(), colony.getY(), colony.getSize() * 2);
+		g.setColor(Color.GRAY);
 
 		for (float a = 0; a < 360; a += 72) {
 			float degrees = (float) Math.toRadians(45 + a);
 
 			fillCirclePolar(colony.getX(), colony.getY(), degrees, colony.getSize(), colony.getSize() * 0.25f);
 		}
+
+		g.setColor(Color.WHITE);
+		drawCircle(colony.getX(), colony.getY(), colony.getSize() * 2);
+
 	}
 
 	protected void fillCirclePolar(float x, float y, float dir, float distance, float size) {

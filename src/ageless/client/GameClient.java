@@ -33,6 +33,10 @@ public class GameClient implements Runnable {
 		this.game = new Game();
 	}
 	
+	public Game getGame() {
+		return game;
+	}
+	
 	public int getFPS() {
 		return fps;
 	}

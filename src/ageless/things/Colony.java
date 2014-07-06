@@ -1,6 +1,5 @@
 package ageless.things;
 
-import ageless.GameState;
 import ageless.GameWorld;
 
 public class Colony extends Unit {

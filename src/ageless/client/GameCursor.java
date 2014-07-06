@@ -19,6 +19,8 @@ import ageless.things.Unit;
 
 public class GameCursor implements MouseListener, MouseMotionListener {
 	protected GameUI ui;
+	protected GameClient client;
+	protected Game game;
 	protected int x;
 	protected int y;
 	protected boolean leftDown;
@@ -28,26 +30,31 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 	protected GameThing hoverThing = null;
 	protected GameThing targetThing = null;
 	protected int action = 0;
+	protected int doubleClick = 0;
 	private Stroke selectionStroke;
+	
 
 	public GameCursor(GameUI ui) {
 		this.ui = ui;
+		this.client = ui.getClient();
 	}
 
 	public void init() {
+		this.game = client.getGame();
+		
 		selectionStroke = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 0, new float[] { 3 }, 0);
 
 		ui.getScreen().addMouseListener(this);
 		ui.getScreen().addMouseMotionListener(this);
 	}
 
-	public synchronized void startSelection() {
+	public void startSelection() {
 		leftDown = true;
 		selectX = x;
 		selectY = y;
 	}
 
-	public synchronized void endSelection() {
+	public void endSelection() {
 		int left = Math.min(x, selectX);
 		int top = Math.min(y, selectY);
 		int right = Math.max(x, selectX);
@@ -59,7 +66,7 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 		selectArea = new Rectangle(left, top, width, height);
 	}
 
-	public void mouseDragged(MouseEvent e) {
+	public synchronized void mouseDragged(MouseEvent e) {
 		x = e.getX();
 		y = e.getY();
 
@@ -75,22 +82,25 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 		}
 	}
 
-	public void mouseMoved(MouseEvent e) {
-		synchronized (this) {
-			x = e.getX();
-			y = e.getY();
-		}
+	public synchronized void mouseMoved(MouseEvent e) {
+		x = e.getX();
+		y = e.getY();
 	}
 
 	public synchronized void command(int action) {
 		this.action = action;
 	}
 
-	public void mouseClicked(MouseEvent e) {
-
+	public synchronized void mouseClicked(MouseEvent e) {
+		x = e.getX();
+		y = e.getY();
+		
+		if (e.getClickCount() > 1) {
+			doubleClick = 1;
+		}
 	}
 
-	public void mousePressed(MouseEvent e) {
+	public synchronized void mousePressed(MouseEvent e) {
 		x = e.getX();
 		y = e.getY();
 
@@ -110,7 +120,7 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 		}
 	}
 
-	public void mouseReleased(MouseEvent e) {
+	public synchronized void mouseReleased(MouseEvent e) {
 		x = e.getX();
 		y = e.getY();
 
@@ -129,11 +139,11 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 		}
 	}
 
-	public void mouseEntered(MouseEvent e) {
+	public synchronized void mouseEntered(MouseEvent e) {
 
 	}
 
-	public void mouseExited(MouseEvent e) {
+	public synchronized void mouseExited(MouseEvent e) {
 
 	}
 
@@ -148,19 +158,17 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 	}
 
 	protected void drawHover(Graphics2D g) {
-		int x = Math.round(hoverThing.getX() + 10 + hoverThing.getSize() * 1.1f);
-		int y = Math.round(hoverThing.getY() - 10 - hoverThing.getSize() * 1.1f);
-		float p;
+
+		//float p;
 
 		if (hoverThing instanceof Unit) {
-			p = getUnitMeter((Unit) hoverThing);
+			drawHoverBar(g, (Unit)hoverThing);
 		} else if (hoverThing instanceof Mineral) {
-			p = getMineralMeter((Mineral) hoverThing);
-		} else {
-			return;
+			drawHoverMineral(g, (Mineral)hoverThing);
 		}
 
-		int w = Math.round(p * 40);
+		/*
+		
 
 		g.setColor(Color.BLACK);
 		g.drawLine(x + 1, y + 1, Math.round(hoverThing.getX()) + 1, Math.round(hoverThing.getY()) + 1);
@@ -179,18 +187,68 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 
 		g.setColor(Color.GREEN);
 		g.fillRect(x, y, w, 5);
+*/
+	}
+	
+	protected void drawOutlineBox(Graphics2D g, int x, int y, int w, int h) {
+		g.setColor(Color.BLACK);
+		g.drawLine(x + 1, y + 1, Math.round(hoverThing.getX()) + 1, Math.round(hoverThing.getY()) + 1);
+
+		g.setColor(Color.WHITE);
+		g.drawLine(x - 1, y - 1, Math.round(hoverThing.getX()), Math.round(hoverThing.getY()));
+
+		g.setColor(Color.WHITE);
+		g.fillRect(x - 2, y - 2, w + 4, h + 4);
+
+		g.setColor(Color.BLACK);
+		g.fillRect(x - 1, y - 1, w + 2, h + 2);
+
+		g.setColor(Color.DARK_GRAY);
+		g.fillRect(x, y, w, h);
+
 
 	}
+	
+	protected void drawHoverBar(Graphics2D g, Unit unit) {
+		int x = Math.round(unit.getX() + 10 + unit.getSize() * 1.1f);
+		int y = Math.round(unit.getY() - 10 - unit.getSize() * 1.1f);
+		
+		g.setColor(Color.BLACK);
+		g.drawLine(x + 1, y + 1, Math.round(hoverThing.getX()) + 1, Math.round(hoverThing.getY()) + 1);
 
+		g.setColor(Color.WHITE);
+		g.drawLine(x - 1, y - 1, Math.round(hoverThing.getX()), Math.round(hoverThing.getY()));
+		
+		drawOutlineBox(g, x, y, 40, 5);
+		
+		float p = getUnitMeter((Unit) hoverThing);
+		int w = Math.round(p * 40);
+		
+		g.setColor(Color.GREEN);
+		g.fillRect(x, y, w, 5);
+	}
+	
+	protected void drawHoverMineral(Graphics2D g, Mineral mineral) {
+		int x = Math.round(mineral.getX() + 10 + mineral.getSize() * 1.1f);
+		int y = Math.round(mineral.getY() - 10 - mineral.getSize() * 1.1f);
+		String text = String.valueOf(mineral.getRemaining());
+		
+		g.setColor(Color.BLACK);
+		g.drawLine(x + 1, y + 1, Math.round(hoverThing.getX()) + 1, Math.round(hoverThing.getY()) + 1);
+
+		g.setColor(Color.WHITE);
+		g.drawLine(x - 1, y - 1, Math.round(hoverThing.getX()), Math.round(hoverThing.getY()));
+		drawOutlineBox(g, x, y, 40, 15);
+		
+		g.setColor(Color.WHITE);
+		g.drawString(text, x + 5, y + 10);
+	}
+	
 	protected float getUnitMeter(Unit unit) {
 		int hp = unit.getHP();
 		int maxHP = unit.getMaxHP();
 
 		return hp / maxHP;
-	}
-
-	protected float getMineralMeter(Mineral mineral) {
-		return 1.0f;
 	}
 
 	public int getX() {
@@ -210,11 +268,15 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 	}
 
 	public synchronized void step(Game game) {
+		//this.game = game;
 		hoverThing = pickThing(game.getWorld().getState(), x, y);
 
 		if (selectArea != null) {
 			selectUnits(game, selectArea);
 			selectArea = null;
+		} else if (doubleClick > 0) {
+			selectAll(game);
+			doubleClick = 0;
 		}
 
 		if (action != 0) {
@@ -223,6 +285,19 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 		}
 
 		// hoverThing = null;
+	}
+	
+	protected void selectAll(Game game) {
+		GamePlayer me = game.getPlayer();
+		int myPlayerID = me.getID();
+		
+		me.clearSelection();
+		
+		for (GameThing thing : game.getWorld().getState().getThings()) {
+			if (thing.getPlayerID() == myPlayerID) {
+				me.select(thing);
+			}
+		}
 	}
 
 	protected void selectUnits(Game game, Rectangle area) {
@@ -281,9 +356,10 @@ public class GameCursor implements MouseListener, MouseMotionListener {
 	protected void commandUnit(Unit unit, int action) {
 		if (targetThing == null) {
 			unit.walkTo(x, y);
-		} else {
-			unit.follow(targetThing);
+			return;
 		}
+		
+		unit.command(targetThing);
 	}
 
 	protected void drawSelection(Graphics2D g) {

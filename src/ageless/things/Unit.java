@@ -1,5 +1,6 @@
 package ageless.things;
 
+import ageless.GamePlayer;
 import ageless.GameThing;
 import ageless.GameWorld;
 
@@ -16,10 +17,12 @@ public class Unit extends GameThing {
 	protected float targetY;
 	protected int skill;
 	protected int kills;
+	protected int carryingMinerals;
+	protected int carryingGas;
 
 	public Unit(int id) {
 		super(id);
-		
+
 		this.hp = 1;
 		this.maxHP = 1;
 	}
@@ -39,16 +42,18 @@ public class Unit extends GameThing {
 		this.targetY = copyFrom.targetY;
 		this.skill = copyFrom.skill;
 		this.kills = copyFrom.kills;
+		this.carryingMinerals = copyFrom.carryingMinerals;
+		this.carryingGas = copyFrom.carryingGas;
 	}
-	
+
 	public int getHP() {
 		return hp;
 	}
-	
+
 	public int getMaxHP() {
 		return Math.max(maxHP, 1);
 	}
-	
+
 	public boolean isMobile() {
 		return true;
 	}
@@ -57,23 +62,66 @@ public class Unit extends GameThing {
 		return 8;
 	}
 
+	public void command(GameThing target) {
+		int otherPlayerID = target.getPlayerID();
+
+		if (otherPlayerID == getPlayerID()) {
+			follow(target);
+			return;
+		}
+
+		if (target instanceof Mineral) {
+			harvest(target);
+			return;
+		}
+
+		attack(target);
+	}
+
+	public void actionTo(int action, float targetX, float targetY) {
+		this.targetX = targetX;
+		this.targetY = targetY;
+		this.targetUnitID = 0;
+		this.direction = (float) Math.atan2(targetY - y, targetX - x);
+		this.changeState(STATE_WALKING);
+	}
+
+	public void attack(GameThing targetThing) {
+		this.targetX = targetThing.getX();
+		this.targetY = targetThing.getY();
+		this.targetAction = STATE_ATTACKING;
+		this.targetUnitID = targetThing.getID();
+		this.direction = (float) Math.atan2(targetY - y, targetX - x);
+		this.changeState(STATE_WALKING);
+	}
+
+	public void harvest(GameThing targetThing) {
+		this.targetX = targetThing.getX();
+		this.targetY = targetThing.getY();
+		this.targetAction = STATE_HARVESTING;
+		this.targetUnitID = targetThing.getID();
+		this.direction = (float) Math.atan2(targetY - y, targetX - x);
+		this.changeState(STATE_HARVESTING);
+	}
+
 	public void walkTo(float targetX, float targetY) {
 		this.targetX = targetX;
 		this.targetY = targetY;
 		this.targetUnitID = 0;
-		this.direction = (float)Math.atan2(targetY - y, targetX - x);
+		this.direction = (float) Math.atan2(targetY - y, targetX - x);
 		this.changeState(STATE_WALKING);
 	}
-	
+
 	public void follow(GameThing target) {
 		if (target.getID() == getID()) {
 			return;
 		}
-		
+
 		this.targetX = target.getX();
 		this.targetY = target.getY();
-		this.direction = (float)Math.atan2(targetY - y, targetX - x);
+		this.direction = (float) Math.atan2(targetY - y, targetX - x);
 		this.targetUnitID = target.getID();
+		this.targetAction = STATE_WALKING;
 		this.changeState(STATE_WALKING);
 	}
 
@@ -95,6 +143,10 @@ public class Unit extends GameThing {
 			stepWalking(world);
 			break;
 
+		case STATE_HARVESTING:
+			stepHarvesting(world);
+			break;
+
 		case STATE_ATTACKING:
 			stepAttacking(world);
 			break;
@@ -106,6 +158,7 @@ public class Unit extends GameThing {
 		case STATE_GARRISON:
 			stepGarrison(world);
 			break;
+
 		}
 	}
 
@@ -121,7 +174,7 @@ public class Unit extends GameThing {
 		return 5f;
 	}
 
-	protected void walk(float dx, float dy) {
+	protected void walkStep(float dx, float dy) {
 		float d = (float) Math.sqrt(dx * dx + dy * dy);
 
 		if (d <= getMovementSpeed()) {
@@ -132,6 +185,13 @@ public class Unit extends GameThing {
 		dy = (dy / d) * getMovementSpeed();
 		this.direction = (float) Math.atan2(dy, dx);
 		translate(dx, dy);
+	}
+
+	protected void walkStep(GameThing target) {
+		float dx = (target.getX() - this.getX());
+		float dy = (target.getY() - this.getY());
+
+		walkStep(dx, dy);
 	}
 
 	protected void stepWalking(GameWorld world) {
@@ -146,45 +206,114 @@ public class Unit extends GameThing {
 
 		if (thing == null) {
 			// Target unit doesn't exist so just walk to the location
-			walk(dx, dy);
 
 			if (withinRange(this.targetX, this.targetY)) {
-				finishWalking();
+				finishWalking(world, thing);
+				return;
 			}
+
+			walkStep(dx, dy);
 		} else {
-			// Follow unit
+			if (withinRange(thing)) {
+				finishWalking(world, thing);
+				return;
+			}
+
 			dx = thing.getX() - this.x;
 			dy = thing.getY() - this.y;
-			
-			//walk(dx, dy);
-			
-			if (!withinRange(thing)) {
-				walk(dx, dy);
-			}
-			
-			//if (withinRange(thing)) {
-			//	finishWalking(world, thing);
-			//}
-		}
-	}
+			walkStep(dx, dy);
 
-	protected void finishWalking() {
-		changeState(STATE_IDLE);
+			// if (withinRange(thing)) {
+			// finishWalking(world, thing);
+			// }
+		}
 	}
 
 	protected void finishWalking(GameWorld world, GameThing target) {
-		switch (targetAction) {
-		case ACTION_FOLLOW:
-			break;
-		case ACTION_NOTHING:
-			changeState(STATE_IDLE);
-			break;
-		case ACTION_ENTER:
-			break;
-		}
+		changeState(targetAction);
 	}
 
 	protected void stepAttacking(GameWorld world) {
+		GameThing target = world.getThing(targetUnitID);
+
+		if (target == null) {
+			// Thing being attacked is gone
+			finishAttacking(world);
+			return;
+		}
+
+		// if (target instanceof Mineral) {
+		// stepAttackingMineral(world, (Mineral) target);
+		// } else
+
+		if (target instanceof Unit) {
+			stepAttackingUnit(world, (Unit) target);
+		}
+	}
+
+	protected void stepAttackingUnit(GameWorld world, Unit targetUnit) {
+		targetUnit.takeDamage(world, this, damage);
+	}
+
+	protected void stepHarvesting(GameWorld world) {
+		GameThing target = world.getThing(targetUnitID);
+
+		if (carryingMinerals >= 10) {
+			stepHarvestingReturn(world);
+			return;
+		}
+
+		if (target == null) {
+			// Thing being attacked is gone
+			// finishAttacking(world);
+			return;
+		}
+
+		if (!withinRange(target)) {
+			walkStep(target);
+			return;
+		}
+
+		if (target instanceof Mineral) {
+			stepAttackingMineral(world, (Mineral) target);
+		}
+	}
+
+	protected void stepAttackingMineral(GameWorld world, Mineral mineral) {
+		this.carryingMinerals += mineral.harvest(world, this, damage);
+	}
+
+	protected void stepHarvestingReturn(GameWorld world) {
+		Colony home;
+		GamePlayer player = world.getPlayer(this);
+
+		if (player == null) {
+			return;
+		}
+
+		home = world.findThing(player, Colony.class);
+
+		if (home == null) {
+			return;
+		}
+		
+		if (withinRange(home)) {
+			player.addMinerals(carryingMinerals);
+			carryingMinerals = 0;
+			return;
+		}
+
+		walkStep(home);
+	}
+
+	public void takeDamage(GameWorld world, GameThing from, int damage) {
+		if (damage <= 0) {
+			damage = 1;
+		}
+	}
+
+	protected void finishAttacking(GameWorld world) {
+		// TODO Auto-generated method stub
 
 	}
 
@@ -204,13 +333,15 @@ public class Unit extends GameThing {
 
 	/** Unit is walking to target */
 	public static final int STATE_WALKING = 2;
-	public static final int STATE_ATTACKING = 3;
-	public static final int STATE_CONSTRUCTING = 4;
-	public static final int STATE_GARRISON = 5;
+	public static final int STATE_HARVESTING = 3;
+	public static final int STATE_ATTACKING = 4;
+	public static final int STATE_CONSTRUCTING = 5;
+	public static final int STATE_GARRISON = 6;
 
 	public static final int ACTION_NOTHING = 0;
 	public static final int ACTION_FOLLOW = 1;
 	public static final int ACTION_ATTACK = 2;
 	public static final int ACTION_ENTER = 3;
 	public static final int ACTION_REPAIR = 4;
+
 }

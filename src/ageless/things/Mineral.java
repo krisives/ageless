@@ -36,4 +36,24 @@ public class Mineral extends GameThing {
 		return remaining;
 	}
 
+	public int harvest(GameWorld world, Unit unit, int damage) {
+		if (this.remaining <= 0) {
+			return 0;
+		}
+		
+		if (damage <= 0) {
+			damage = 1;
+		}
+		
+		this.remaining = this.remaining - damage;
+		
+		if (this.remaining <= 0) {
+			damage += this.remaining;
+			this.remaining = 0;
+		}
+		
+		world.getPlayer(unit).addScore(damage);
+		return damage;
+	}
+
 }

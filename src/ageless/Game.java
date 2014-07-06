@@ -7,14 +7,15 @@ import ageless.things.Unit;
 
 public class Game {
 	private GameWorld world;
-	private GameWorld netWorld;
+	//private GameWorld netWorld;
 	private GameNetwork network;
 	private GamePlayer player;
+	private GamePlayer neutral;
 	private boolean gameExited = false;
 
 	public Game() {
 		this.network = null;
-		this.netWorld = null;
+		//this.netWorld = null;
 		this.world = createStartingWorld();
 		
 		world.solvePhysics();
@@ -23,7 +24,7 @@ public class Game {
 	public Game(GameNetwork network) {
 		this();
 		this.network = network;
-		this.netWorld = world.createCopy();
+		//this.netWorld = world.createCopy();
 	}
 	
 	public GamePlayer getPlayer() {
@@ -41,6 +42,7 @@ public class Game {
 		startingState = new GameState();
 		startingWorld = new GameWorld(randomID, startingState);
 
+		this.neutral = new GamePlayer(0x00);
 		this.player = new GamePlayer(0x01);
 		startingWorld.addPlayer(this.player);
 		
@@ -62,7 +64,7 @@ public class Game {
 		Mineral m;
 		
 		for (int i=0; i < 5; i++) {
-			m = new Mineral(player.createThingID());
+			m = new Mineral(neutral.createThingID());
 			m.setPosition(400 + i * 30, 400  - i * 30);
 			m.setRemaining(5000);
 			startingState.addThing(m);
